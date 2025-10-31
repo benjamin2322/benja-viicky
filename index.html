@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Liceo Connect</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Liceo Connect</h1>
+
+  <div class="box">
+    <h3>Registro</h3>
+    <input id="nombre" placeholder="Nombre"><br>
+    <select id="rol">
+      <option value="alumno">Alumno</option>
+      <option value="profesor">Profesor</option>
+      <option value="padre">Padre</option>
+      <option value="directivo">Directivo</option>
+    </select><br>
+    <input id="email" placeholder="Email"><br>
+    <input id="password" type="password" placeholder="Contraseña"><br>
+    <button onclick="registrar()">Registrar</button>
+  </div>
+
+  <div class="box">
+    <h3>Login</h3>
+    <input id="lemail" placeholder="Email"><br>
+    <input id="lpassword" type="password" placeholder="Contraseña"><br>
+    <button onclick="login()">Entrar</button>
+  </div>
+
+  <pre id="out"></pre>
+
+  <script>
+  async function registrar(){
+    const data = {
+      nombre: nombre.value,
+      rol: rol.value,
+      email: email.value,
+      password: password.value
+    };
+    const res = await fetch('/registro', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    out.textContent = await res.text();
+  }
+
+  async function login(){
+    const data = {
+      email: lemail.value,
+      password: lpassword.value
+    };
+    const res = await fetch('/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    out.textContent = await res.text();
+  }
+  </script>
+</body>
+</html>
