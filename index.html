@@ -2,63 +2,283 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Liceo Connect</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #0073e6;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    main {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .box {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 320px;
+      margin: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2, h3 {
+      color: #0073e6;
+      text-align: center;
+    }
+
+    input, select, button, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 6px 0;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background: #0073e6;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #005bb5;
+    }
+
+    #out {
+      white-space: pre-wrap;
+      background: #eee;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>Liceo Connect</h1>
+  <header>
+    <h1>📘 Liceo Connect</h1>
+    <p>Gestión de faltas y calificaciones del liceo</p>
+  </header>
 
-  <div class="box">
-    <h3>Registro</h3>
-    <input id="nombre" placeholder="Nombre"><br>
-    <select id="rol">
-      <option value="alumno">Alumno</option>
-      <option value="profesor">Profesor</option>
-      <option value="padre">Padre</option>
-      <option value="directivo">Directivo</option>
-    </select><br>
-    <input id="email" placeholder="Email"><br>
-    <input id="password" type="password" placeholder="Contraseña"><br>
-    <button onclick="registrar()">Registrar</button>
-  </div>
+  <main>
+    <div class="box" id="registro-box">
+      <h3>Registro</h3>
+      <input id="nombre" placeholder="Nombre completo">
+      <select id="rol">
+        <option value="alumno">Alumno</option>
+        <option value="profesor">Profesor</option>
+        <option value="padre">Padre</option>
+        <option value="directivo">Directivo</option>
+      </select>
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Contraseña">
+      <button onclick="registrar()">Registrar</button>
+    </div>
 
-  <div class="box">
-    <h3>Login</h3>
-    <input id="lemail" placeholder="Email"><br>
-    <input id="lpassword" type="password" placeholder="Contraseña"><br>
-    <button onclick="login()">Entrar</button>
-  </div>
+    <div class="box" id="login-box">
+      <h3>Iniciar sesión</h3>
+      <input id="lemail" placeholder="Email">
+      <input id="lpassword" type="password" placeholder="Contraseña">
+      <button onclick="login()">Entrar</button>
+    </div>
 
-  <pre id="out"></pre>
+    <div class="box hidden" id="panel">
+      <h3 id="bienvenida"></h3>
+
+      <div id="panel-alumno" class="hidden">
+        <h4>Mis asistencias</h4>
+        <div id="mis-asistencias"></div>
+        <h4>Mis calificaciones</h4>
+        <div id="mis-notas"></div>
+      </div>
+
+      <div id="panel-profesor" class="hidden">
+        <h4>Registrar asistencia</h4>
+        <input id="idEstudianteAsistencia" placeholder="ID del estudiante">
+        <select id="presente">
+          <option value="true">Presente</option>
+          <option value="false">Ausente</option>
+        </select>
+        <button onclick="marcarAsistencia()">Guardar asistencia</button>
+
+        <h4>Registrar calificación</h4>
+        <input id="idEstudianteNota" placeholder="ID del estudiante">
+        <input id="materia" placeholder="Materia">
+        <input id="nota" type="number" placeholder="Nota">
+        <button onclick="agregarCalificacion()">Guardar nota</button>
+      </div>
+
+      <div id="panel-directivo" class="hidden">
+        <h4>Listado de usuarios</h4>
+        <div id="lista-usuarios"></div>
+      </div>
+
+      <button style="margin-top:10px;" onclick="logout()">Cerrar sesión</button>
+    </div>
+  </main>
 
   <script>
-  async function registrar(){
-    const data = {
-      nombre: nombre.value,
-      rol: rol.value,
-      email: email.value,
-      password: password.value
-    };
-    const res = await fetch('/registro', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(data)
-    });
-    out.textContent = await res.text();
-  }
+    // ================
+    // Datos locales
+    // ================
+    let usuarios = JSON.parse(localStorage.getItem('usuarios') || '[]');
+    let asistencias = JSON.parse(localStorage.getItem('asistencias') || '[]');
+    let calificaciones = JSON.parse(localStorage.getItem('calificaciones') || '[]');
+    let usuarioActual = null;
 
-  async function login(){
-    const data = {
-      email: lemail.value,
-      password: lpassword.value
+    // =================
+    // Funciones base
+    // =================
+    function registrar() {
+      const nombre = document.getElementById('nombre').value;
+      const rol = document.getElementById('rol').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!nombre || !email || !password) {
+        alert('Por favor completa todos los campos.');
+        return;
+      }
+
+      if (usuarios.find(u => u.email === email)) {
+        alert('Ya existe un usuario con ese correo.');
+        return;
+      }
+
+      const nuevo = {
+        id: Date.now(),
+        nombre, rol, email, password
+      };
+      usuarios.push(nuevo);
+      localStorage.setItem('usuarios', JSON.stringify(usuarios));
+      alert('Usuario registrado exitosamente ✅');
+    }
+
+    function login() {
+      const email = document.getElementById('lemail').value;
+      const password = document.getElementById('lpassword').value;
+
+      const u = usuarios.find(x => x.email === email && x.password === password);
+      if (!u) {
+        alert('Credenciales incorrectas ❌');
+        return;
+      }
+
+      usuarioActual = u;
+      localStorage.setItem('usuarioActual', JSON.stringify(u));
+      mostrarPanel();
+    }
+
+    function logout() {
+      usuarioActual = null;
+      localStorage.removeItem('usuarioActual');
+      document.getElementById('panel').classList.add('hidden');
+      document.getElementById('login-box').classList.remove('hidden');
+      document.getElementById('registro-box').classList.remove('hidden');
+    }
+
+    function mostrarPanel() {
+      document.getElementById('login-box').classList.add('hidden');
+      document.getElementById('registro-box').classList.add('hidden');
+      document.getElementById('panel').classList.remove('hidden');
+      document.getElementById('bienvenida').textContent = `Bienvenido/a ${usuarioActual.nombre} (${usuarioActual.rol})`;
+
+      document.getElementById('panel-alumno').classList.add('hidden');
+      document.getElementById('panel-profesor').classList.add('hidden');
+      document.getElementById('panel-directivo').classList.add('hidden');
+
+      if (usuarioActual.rol === 'alumno') cargarAlumno();
+      if (usuarioActual.rol === 'profesor') document.getElementById('panel-profesor').classList.remove('hidden');
+      if (usuarioActual.rol === 'directivo') cargarDirectivo();
+    }
+
+    // ======================
+    // Funciones de Profesor
+    // ======================
+    function marcarAsistencia() {
+      const id = parseInt(document.getElementById('idEstudianteAsistencia').value);
+      const presente = document.getElementById('presente').value === 'true';
+
+      if (!usuarios.find(u => u.id === id)) {
+        alert('Estudiante no encontrado');
+        return;
+      }
+
+      asistencias.push({ estudiante_id: id, fecha: new Date().toLocaleDateString(), presente });
+      localStorage.setItem('asistencias', JSON.stringify(asistencias));
+      alert('Asistencia guardada ✅');
+    }
+
+    function agregarCalificacion() {
+      const id = parseInt(document.getElementById('idEstudianteNota').value);
+      const materia = document.getElementById('materia').value;
+      const nota = parseFloat(document.getElementById('nota').value);
+
+      if (!usuarios.find(u => u.id === id)) {
+        alert('Estudiante no encontrado');
+        return;
+      }
+
+      calificaciones.push({ estudiante_id: id, materia, nota });
+      localStorage.setItem('calificaciones', JSON.stringify(calificaciones));
+      alert('Nota registrada ✅');
+    }
+
+    // ======================
+    // Funciones de Alumno
+    // ======================
+    function cargarAlumno() {
+      const misAsistencias = asistencias.filter(a => a.estudiante_id === usuarioActual.id);
+      const misNotas = calificaciones.filter(c => c.estudiante_id === usuarioActual.id);
+
+      document.getElementById('panel-alumno').classList.remove('hidden');
+      document.getElementById('mis-asistencias').innerHTML = misAsistencias.length ?
+        misAsistencias.map(a => `📅 ${a.fecha}: ${a.presente ? 'Presente ✅' : 'Ausente ❌'}`).join('<br>') :
+        'No hay asistencias registradas.';
+
+      document.getElementById('mis-notas').innerHTML = misNotas.length ?
+        misNotas.map(c => `📘 ${c.materia}: ${c.nota}`).join('<br>') :
+        'No hay calificaciones registradas.';
+    }
+
+    // ======================
+    // Funciones de Directivo
+    // ======================
+    function cargarDirectivo() {
+      document.getElementById('panel-directivo').classList.remove('hidden');
+      const lista = usuarios.map(u => `#${u.id} - ${u.nombre} (${u.rol})`).join('<br>');
+      document.getElementById('lista-usuarios').innerHTML = lista || 'Sin usuarios registrados.';
+    }
+
+    // ======================
+    // Estado persistente
+    // ======================
+    window.onload = () => {
+      const u = localStorage.getItem('usuarioActual');
+      if (u) {
+        usuarioActual = JSON.parse(u);
+        mostrarPanel();
+      }
     };
-    const res = await fetch('/login', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(data)
-    });
-    out.textContent = await res.text();
-  }
   </script>
 </body>
 </html>
